@@ -1,0 +1,12 @@
+.gradle/
+.idea/
+local.properties
+**/build/
+worker/node_modules/
+worker/.wrangler/
+.qwen-work/
+*.jks
+*.keystore
+*.apk
+*.aab
+*.log
