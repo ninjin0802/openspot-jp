@@ -4,7 +4,7 @@ enum class PlaceCategory(val apiValue: String, val label: String) {
     FREE_WIFI("free_wifi", "無料Wi-Fi"),
     BICYCLE_PARKING("bicycle_parking", "自転車駐輪場"),
     MOTORCYCLE_PARKING("motorcycle_parking", "バイク駐輪場"),
-    CAFE_OPEN_NOW("cafe_open_now", "営業中カフェ"),
+    CAFE_OPEN_NOW("cafe_open_now", "カフェ"),
 }
 
 data class Place(

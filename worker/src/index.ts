@@ -79,7 +79,7 @@ export function buildOverpassQuery(params: SearchParams): string {
   }
   if (params.categories.has("bicycle_parking")) selectors.push(`nwr${around}["amenity"="bicycle_parking"];`);
   if (params.categories.has("motorcycle_parking")) selectors.push(`nwr${around}["amenity"="motorcycle_parking"];`);
-  if (params.categories.has("cafe_open_now")) selectors.push(`nwr${around}["amenity"="cafe"]["opening_hours"];`);
+  if (params.categories.has("cafe_open_now")) selectors.push(`nwr${around}["amenity"="cafe"];`);
   return `[out:json][timeout:20];(${selectors.join("")});out center tags;`;
 }
 
@@ -90,7 +90,7 @@ function categoriesFor(tags: Record<string, string>, requested: Set<PlaceCategor
   if (requested.has("free_wifi") && hasWifi && !explicitlyPaid) matched.push("free_wifi");
   if (requested.has("bicycle_parking") && tags.amenity === "bicycle_parking") matched.push("bicycle_parking");
   if (requested.has("motorcycle_parking") && tags.amenity === "motorcycle_parking") matched.push("motorcycle_parking");
-  if (requested.has("cafe_open_now") && tags.amenity === "cafe" && tags.opening_hours && openingHoursIsOpenNow(tags.opening_hours, now)) matched.push("cafe_open_now");
+  if (requested.has("cafe_open_now") && tags.amenity === "cafe") matched.push("cafe_open_now");
   return matched;
 }
 
@@ -121,7 +121,7 @@ export function parseOverpassElements(elements: OverpassElement[], params: Searc
 }
 
 function categoryLabel(category: PlaceCategory): string {
-  return ({ free_wifi: "無料Wi-Fi", bicycle_parking: "自転車駐輪場", motorcycle_parking: "バイク駐輪場", cafe_open_now: "営業中カフェ" })[category];
+  return ({ free_wifi: "無料Wi-Fi", bicycle_parking: "自転車駐輪場", motorcycle_parking: "バイク駐輪場", cafe_open_now: "カフェ" })[category];
 }
 
 function json(data: unknown, status = 200): Response {
@@ -130,7 +130,7 @@ function json(data: unknown, status = 200): Response {
 
 async function placesForCategory(params: SearchParams, category: PlaceCategory, env: Env): Promise<{ data: Place[]; cacheStatus: string }> {
   const categoryParams = { ...params, categories: new Set([category]) };
-  const cacheKey = `places:v3:${params.latitude.toFixed(3)}:${params.longitude.toFixed(3)}:${params.radiusMeters}:${category}`;
+  const cacheKey = `places:v4:${params.latitude.toFixed(3)}:${params.longitude.toFixed(3)}:${params.radiusMeters}:${category}`;
   const cached = await env.CACHE.get(cacheKey, "json") as { storedAt: number; data: Place[] } | null;
   const age = cached ? Date.now() - cached.storedAt : Infinity;
   if (cached && age <= 6 * 60 * 60 * 1000) return { data: cached.data, cacheStatus: "hit" };

@@ -56,13 +56,13 @@ describe("Overpass parsing", () => {
     expect(new Set(data.map((place) => place.id)).size).toBe(2);
   });
 
-  it("keeps only cafes open now and ignores malformed elements", () => {
+  it("keeps cafes even when opening hours are closed or unavailable", () => {
     const data = parseOverpassElements([
       { type: "node", id: 5, lat: 35.6813, lon: 139.7672, tags: { amenity: "cafe", opening_hours: "Mo-Fr 09:00-22:00", name: "Open" } },
       { type: "node", id: 6, lat: 35.6814, lon: 139.7672, tags: { amenity: "cafe", opening_hours: "Mo-Fr 18:00-22:00", name: "Closed" } },
+      { type: "node", id: 10, lat: 35.6815, lon: 139.7672, tags: { amenity: "cafe", name: "Hours unknown" } },
       { type: "way", id: 7, tags: { amenity: "cafe", opening_hours: "24/7" } },
     ], params, new Date("2026-08-17T03:00:00Z"));
-    expect(data).toHaveLength(1);
-    expect(data[0]?.name).toBe("Open");
+    expect(data.map((place) => place.name)).toEqual(["Open", "Closed", "Hours unknown"]);
   });
 });
