@@ -29,19 +29,31 @@ describe("geospatial helpers", () => {
     const mondayNoonJst = new Date("2026-08-17T03:00:00Z");
     expect(openingHoursIsOpenNow("Mo-Fr 09:00-22:00", mondayNoonJst)).toBe(true);
     expect(openingHoursIsOpenNow("Mo-Fr 18:00-22:00", mondayNoonJst)).toBe(false);
+    expect(openingHoursIsOpenNow("24/7", mondayNoonJst)).toBe(true);
+    expect(openingHoursIsOpenNow("Sa,Su,PH 09:00-18:00; Mo-Fr 08:00-13:00,14:00-22:00", mondayNoonJst)).toBe(true);
+    expect(openingHoursIsOpenNow("Sa,Su,PH 09:00-18:00", mondayNoonJst)).toBe(false);
     expect(openingHoursIsOpenNow("unsupported", mondayNoonJst)).toBe(false);
   });
 });
 
 describe("Overpass parsing", () => {
-  it("strictly requires verified free wifi and separates parking", () => {
+  it("finds non-paid wifi tags and separates parking", () => {
     const data = parseOverpassElements([
       { type: "node", id: 1, lat: 35.6813, lon: 139.7672, tags: { internet_access: "wlan", "internet_access:fee": "no", name: "Wi-Fi" } },
       { type: "node", id: 2, lat: 35.6814, lon: 139.7672, tags: { internet_access: "wlan", name: "Unknown fee" } },
       { type: "node", id: 3, lat: 35.6815, lon: 139.7672, tags: { amenity: "bicycle_parking" } },
       { type: "node", id: 4, lat: 35.6816, lon: 139.7672, tags: { amenity: "motorcycle_parking" } },
+      { type: "node", id: 8, lat: 35.6817, lon: 139.7672, tags: { wifi: "yes", fee: "yes", name: "Paid" } },
     ], params, new Date("2026-08-17T03:00:00Z"));
-    expect(data.map((place) => place.category)).toEqual(["free_wifi", "bicycle_parking", "motorcycle_parking"]);
+    expect(data.map((place) => place.category)).toEqual(["free_wifi", "free_wifi", "bicycle_parking", "motorcycle_parking"]);
+  });
+
+  it("returns a wifi cafe in both requested categories", () => {
+    const data = parseOverpassElements([
+      { type: "node", id: 9, lat: 35.6813, lon: 139.7672, tags: { amenity: "cafe", internet_access: "wlan", opening_hours: "24/7", name: "Both" } },
+    ], params, new Date("2026-08-17T03:00:00Z"));
+    expect(data.map((place) => place.category)).toEqual(["free_wifi", "cafe_open_now"]);
+    expect(new Set(data.map((place) => place.id)).size).toBe(2);
   });
 
   it("keeps only cafes open now and ignores malformed elements", () => {

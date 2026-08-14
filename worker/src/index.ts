@@ -39,40 +39,59 @@ export function openingHoursIsOpenNow(value: string, now = new Date()): boolean 
   const hour = Number(japanParts.find((part) => part.type === "hour")?.value);
   const minute = Number(japanParts.find((part) => part.type === "minute")?.value);
   if (!weekday || !Number.isFinite(hour) || !Number.isFinite(minute)) return false;
+  if (value.trim() === "24/7") return true;
+  const currentDay = DAY_NAMES.indexOf(weekday);
   const current = hour * 60 + minute;
   return value.split(";").some((rawRule) => {
-    const match = rawRule.trim().match(/^(?:(Mo|Tu|We|Th|Fr|Sa|Su)(?:-(Mo|Tu|We|Th|Fr|Sa|Su))?\s+)?(\d{2}):(\d{2})-(\d{2}):(\d{2})$/);
-    if (!match) return false;
-    const [, fromDay, toDay, sh, sm, eh, em] = match;
-    if (fromDay) {
-      const currentDay = DAY_NAMES.indexOf(weekday);
+    const rule = rawRule.trim();
+    if (!rule || /\boff\b/i.test(rule)) return false;
+    const ranges = [...rule.matchAll(/(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})/g)];
+    if (ranges.length === 0) return false;
+    const dayExpression = rule.slice(0, ranges[0]?.index ?? 0);
+    const selectedDays = new Set<number>();
+    for (const match of dayExpression.matchAll(/(Mo|Tu|We|Th|Fr|Sa|Su)(?:-(Mo|Tu|We|Th|Fr|Sa|Su))?/g)) {
+      const fromDay = match[1];
+      if (!fromDay) continue;
       const startDay = DAY_NAMES.indexOf(fromDay);
-      const endDay = DAY_NAMES.indexOf(toDay ?? fromDay);
-      const dayMatches = startDay <= endDay ? currentDay >= startDay && currentDay <= endDay : currentDay >= startDay || currentDay <= endDay;
-      if (!dayMatches) return false;
+      const endDay = DAY_NAMES.indexOf(match[2] ?? fromDay);
+      for (let day = startDay; ; day = (day + 1) % 7) {
+        selectedDays.add(day);
+        if (day === endDay) break;
+      }
     }
-    const start = Number(sh) * 60 + Number(sm);
-    const end = Number(eh) * 60 + Number(em);
-    return end > start ? current >= start && current < end : current >= start || current < end;
+    const dayMatches = (day: number) => selectedDays.size === 0 || selectedDays.has(day);
+    return ranges.some(([, sh, sm, eh, em]) => {
+      const start = Number(sh) * 60 + Number(sm);
+      const end = Number(eh) * 60 + Number(em);
+      if (start === end) return dayMatches(currentDay);
+      if (end > start) return dayMatches(currentDay) && current >= start && current < end;
+      return (dayMatches(currentDay) && current >= start) || (dayMatches((currentDay + 6) % 7) && current < end);
+    });
   });
 }
 
 export function buildOverpassQuery(params: SearchParams): string {
   const around = `(around:${params.radiusMeters},${params.latitude},${params.longitude})`;
   const selectors: string[] = [];
-  if (params.categories.has("free_wifi")) selectors.push(`nwr${around}["internet_access"="wlan"]["internet_access:fee"="no"];`);
+  if (params.categories.has("free_wifi")) {
+    selectors.push(`nwr${around}["internet_access"="wlan"]["internet_access:fee"!="yes"]["fee"!="yes"];`);
+    selectors.push(`nwr${around}["wifi"="yes"]["internet_access:fee"!="yes"]["fee"!="yes"];`);
+  }
   if (params.categories.has("bicycle_parking")) selectors.push(`nwr${around}["amenity"="bicycle_parking"];`);
   if (params.categories.has("motorcycle_parking")) selectors.push(`nwr${around}["amenity"="motorcycle_parking"];`);
   if (params.categories.has("cafe_open_now")) selectors.push(`nwr${around}["amenity"="cafe"]["opening_hours"];`);
   return `[out:json][timeout:20];(${selectors.join("")});out center tags;`;
 }
 
-function categoryFor(tags: Record<string, string>, requested: Set<PlaceCategory>, now: Date): PlaceCategory | null {
-  if (requested.has("free_wifi") && tags.internet_access === "wlan" && tags["internet_access:fee"] === "no") return "free_wifi";
-  if (requested.has("bicycle_parking") && tags.amenity === "bicycle_parking") return "bicycle_parking";
-  if (requested.has("motorcycle_parking") && tags.amenity === "motorcycle_parking") return "motorcycle_parking";
-  if (requested.has("cafe_open_now") && tags.amenity === "cafe" && tags.opening_hours && openingHoursIsOpenNow(tags.opening_hours, now)) return "cafe_open_now";
-  return null;
+function categoriesFor(tags: Record<string, string>, requested: Set<PlaceCategory>, now: Date): PlaceCategory[] {
+  const matched: PlaceCategory[] = [];
+  const hasWifi = tags.internet_access === "wlan" || tags.wifi === "yes";
+  const explicitlyPaid = tags["internet_access:fee"] === "yes" || tags.fee === "yes";
+  if (requested.has("free_wifi") && hasWifi && !explicitlyPaid) matched.push("free_wifi");
+  if (requested.has("bicycle_parking") && tags.amenity === "bicycle_parking") matched.push("bicycle_parking");
+  if (requested.has("motorcycle_parking") && tags.amenity === "motorcycle_parking") matched.push("motorcycle_parking");
+  if (requested.has("cafe_open_now") && tags.amenity === "cafe" && tags.opening_hours && openingHoursIsOpenNow(tags.opening_hours, now)) matched.push("cafe_open_now");
+  return matched;
 }
 
 export function parseOverpassElements(elements: OverpassElement[], params: SearchParams, now = new Date()): Place[] {
@@ -81,20 +100,23 @@ export function parseOverpassElements(elements: OverpassElement[], params: Searc
     const latitude = element.lat ?? element.center?.lat;
     const longitude = element.lon ?? element.center?.lon;
     const tags = element.tags ?? {};
-    const category = categoryFor(tags, params.categories, now);
-    if (latitude === undefined || longitude === undefined || !category) return [];
+    const matchedCategories = categoriesFor(tags, params.categories, now);
+    if (latitude === undefined || longitude === undefined || matchedCategories.length === 0) return [];
     const distanceMeters = haversineMeters(params.latitude, params.longitude, latitude, longitude);
-    const id = `osm:${element.type}/${element.id}`;
-    if (distanceMeters > params.radiusMeters || seen.has(id)) return [];
-    seen.add(id);
+    if (distanceMeters > params.radiusMeters) return [];
     const address = [tags["addr:province"], tags["addr:city"], tags["addr:suburb"], tags["addr:street"], tags["addr:housenumber"]].filter(Boolean).join("");
-    return [{
+    return matchedCategories.flatMap((category): Place[] => {
+      const id = `osm:${element.type}/${element.id}:${category}`;
+      if (seen.has(id)) return [];
+      seen.add(id);
+      return [{
       id, source: "OpenStreetMap", category, name: tags.name ?? tags.operator ?? categoryLabel(category), latitude, longitude,
       distanceMeters: Math.round(distanceMeters), address: address || null, openingHours: tags.opening_hours ?? null,
       fee: tags.fee ?? tags["internet_access:fee"] ?? null, access: tags.access ?? null,
       capacity: tags.capacity && /^\d+$/.test(tags.capacity) ? Number(tags.capacity) : null,
       sourceUrl: `https://www.openstreetmap.org/${element.type}/${element.id}`, updatedAt: element.timestamp ?? null,
-    }];
+      }];
+    });
   }).sort((a, b) => a.distanceMeters - b.distanceMeters);
 }
 
@@ -106,27 +128,43 @@ function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
 }
 
-async function places(requestUrl: URL, env: Env): Promise<Response> {
-  const params = parseSearchParams(requestUrl);
-  const cacheKey = `places:${params.latitude.toFixed(3)}:${params.longitude.toFixed(3)}:${params.radiusMeters}:${[...params.categories].sort().join(",")}`;
+async function placesForCategory(params: SearchParams, category: PlaceCategory, env: Env): Promise<{ data: Place[]; cacheStatus: string }> {
+  const categoryParams = { ...params, categories: new Set([category]) };
+  const cacheKey = `places:v3:${params.latitude.toFixed(3)}:${params.longitude.toFixed(3)}:${params.radiusMeters}:${category}`;
   const cached = await env.CACHE.get(cacheKey, "json") as { storedAt: number; data: Place[] } | null;
   const age = cached ? Date.now() - cached.storedAt : Infinity;
-  if (cached && age <= 6 * 60 * 60 * 1000) return json({ data: cached.data, meta: meta("hit") });
+  if (cached && age <= 6 * 60 * 60 * 1000) return { data: cached.data, cacheStatus: "hit" };
   try {
     const upstream = await fetch(env.OVERPASS_URL ?? "https://overpass-api.de/api/interpreter", {
       method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "user-agent": env.USER_AGENT ?? "OpenSpot-JP/0.1" },
-      body: new URLSearchParams({ data: buildOverpassQuery(params) }),
+      body: new URLSearchParams({ data: buildOverpassQuery(categoryParams) }),
     });
     if (!upstream.ok) throw new Error(`Overpass ${upstream.status}`);
     const payload = await upstream.json() as { elements?: OverpassElement[] };
     if (!Array.isArray(payload.elements)) throw new Error("Malformed Overpass response");
-    const data = parseOverpassElements(payload.elements, params);
+    const data = parseOverpassElements(payload.elements, categoryParams);
     await env.CACHE.put(cacheKey, JSON.stringify({ storedAt: Date.now(), data }), { expirationTtl: 86_400 });
-    return json({ data, meta: meta("miss") });
+    return { data, cacheStatus: "miss" };
   } catch (error) {
-    if (cached && age <= 24 * 60 * 60 * 1000) return json({ data: cached.data, meta: meta("stale") });
+    if (cached && age <= 24 * 60 * 60 * 1000) return { data: cached.data, cacheStatus: "stale" };
     throw error;
   }
+}
+
+async function places(requestUrl: URL, env: Env): Promise<Response> {
+  const params = parseSearchParams(requestUrl);
+  const requested = [...params.categories];
+  const results = await Promise.allSettled(requested.map((category) => placesForCategory(params, category, env)));
+  const fulfilled = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+  if (fulfilled.length === 0) {
+    const failure = results.find((result) => result.status === "rejected") as PromiseRejectedResult | undefined;
+    throw failure?.reason ?? new Error("All Overpass requests failed");
+  }
+  const data = fulfilled.flatMap((result) => result.data).sort((a, b) => a.distanceMeters - b.distanceMeters);
+  const cacheStatus = fulfilled.length < requested.length ? "partial"
+    : fulfilled.some((result) => result.cacheStatus === "miss") ? "miss"
+      : fulfilled.some((result) => result.cacheStatus === "stale") ? "stale" : "hit";
+  return json({ data, meta: meta(cacheStatus) });
 }
 
 async function geocode(requestUrl: URL, env: Env): Promise<Response> {

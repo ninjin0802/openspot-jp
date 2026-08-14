@@ -18,3 +18,5 @@ All notable changes follow Semantic Versioning.
 - Replace the dense raster basemap with a crisp, low-noise OpenFreeMap vector style.
 - Point Android builds at the deployed OpenSpot JP API by default.
 - Handle unavailable current-location callbacks without crashing.
+- Broaden free Wi-Fi discovery, support common OSM opening-hours syntax, and retain both categories for Wi-Fi cafés.
+- Split multi-category Overpass searches into independently cached requests so one slow category cannot discard all results.
