@@ -1,7 +1,7 @@
 import { categories, type Env, type OverpassElement, type Place, type PlaceCategory } from "./types";
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "access-control-allow-origin": "*" };
-const ATTRIBUTIONS = ["© OpenStreetMap contributors (ODbL)", "地理院タイル"];
+const ATTRIBUTIONS = ["© OpenStreetMap contributors (ODbL)"];
 const DAY_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 export interface SearchParams {

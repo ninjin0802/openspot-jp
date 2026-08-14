@@ -6,7 +6,7 @@ OpenSpot JPは、日本全国の無料確認済みWi-Fi、自転車駐輪場、�
 
 - Android: Kotlin、Jetpack Compose、MapLibre Native、Room
 - API: Cloudflare Workers、KV、OpenStreetMap Overpass、Nominatim
-- 地図: 国土地理院の地理院タイル
+- 地図: OpenFreeMapのベクタータイルとPositronスタイル
 
 ## 開発
 

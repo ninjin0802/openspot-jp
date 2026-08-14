@@ -1,6 +1,6 @@
 # Data sources
 
-- Map background: Geospatial Information Authority of Japan standard tiles. Follow the GSI content terms and preserve attribution.
+- Map background: OpenFreeMap vector tiles with the Positron style, derived from OpenStreetMap/OpenMapTiles. Preserve the attribution shown by MapLibre.
 - Points of interest: OpenStreetMap through Overpass API, licensed under ODbL. Display `© OpenStreetMap contributors`.
 - Place-name search: the public Nominatim service through the Worker proxy. Requests are user-submitted, cached, identifiable, Japan-filtered, and must remain below the service policy limit. Autocomplete is not implemented.
 

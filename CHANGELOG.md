@@ -14,3 +14,4 @@ All notable changes follow Semantic Versioning.
 ### Fixed
 
 - Initialize MapLibre before creating the map view, preventing an immediate startup crash.
+- Replace the dense raster basemap with a crisp, low-noise OpenFreeMap vector style.

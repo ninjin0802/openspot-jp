@@ -53,14 +53,9 @@ import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
-import org.maplibre.android.maps.Style
 import org.maplibre.android.annotations.MarkerOptions
 
-private const val GSI_STYLE = """{
-  "version": 8,
-  "sources": {"gsi": {"type": "raster", "tiles": ["https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png"], "tileSize": 256, "attribution": "地理院タイル"}},
-  "layers": [{"id": "gsi", "type": "raster", "source": "gsi"}]
-}"""
+private const val MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/positron"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,7 +157,7 @@ private fun MapPanel(center: MapCenter, places: List<Place>, onSelect: (Place) -
             }
         }
         lifecycle.addObserver(observer)
-        mapView.getMapAsync { ready -> ready.setStyle(Style.Builder().fromJson(GSI_STYLE)) { map = ready } }
+        mapView.getMapAsync { ready -> ready.setStyle(MAP_STYLE_URL) { map = ready } }
         onDispose { lifecycle.removeObserver(observer); mapView.onDestroy() }
     }
 
@@ -179,7 +174,7 @@ private fun MapPanel(center: MapCenter, places: List<Place>, onSelect: (Place) -
             ready.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(center.latitude, center.longitude), 14.0))
         }
     }
-    Box(Modifier.fillMaxWidth().height(260.dp).padding(vertical = 6.dp)) { AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize()) }
+    Box(Modifier.fillMaxWidth().height(320.dp).padding(vertical = 6.dp)) { AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize()) }
 }
 
 @Composable
