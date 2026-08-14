@@ -33,9 +33,11 @@ class LocationProvider(private val context: Context) {
                 provider,
                 signal,
                 ContextCompat.getMainExecutor(context),
-                Consumer<Location> { location ->
-                    val value = location.let { UserLocation(it.latitude, it.longitude, it.accuracy) }
-                    continuation.resume(value) { _, _, _ -> }
+                Consumer<Location?> { location ->
+                    if (continuation.isActive) {
+                        val value = location?.let { UserLocation(it.latitude, it.longitude, it.accuracy) }
+                        continuation.resume(value) { _, _, _ -> }
+                    }
                 },
             )
             continuation.invokeOnCancellation { signal.cancel() }

@@ -9,6 +9,6 @@
     "USER_AGENT": "OpenSpot-JP/0.1 (https://github.com/ninjin0802/openspot-jp)"
   },
   "kv_namespaces": [
-    { "binding": "CACHE", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }
+    { "binding": "CACHE", "id": "140a449744fd4ae0be21a7bb3674e966" }
   ]
 }

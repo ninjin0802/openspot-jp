@@ -10,8 +10,11 @@ All notable changes follow Semantic Versioning.
 - Cloudflare Worker integration for Overpass and Nominatim with caching and attribution.
 - Qwen implementation-worker engineering loop and continuous integration.
 - OpenSpot JP map-pin application icon and Android launcher density assets.
+- Production Cloudflare Worker deployment with a KV-backed response cache.
 
 ### Fixed
 
 - Initialize MapLibre before creating the map view, preventing an immediate startup crash.
 - Replace the dense raster basemap with a crisp, low-noise OpenFreeMap vector style.
+- Point Android builds at the deployed OpenSpot JP API by default.
+- Handle unavailable current-location callbacks without crashing.

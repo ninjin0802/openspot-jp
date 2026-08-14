@@ -6,7 +6,7 @@ plugins {
 }
 
 val apiBaseUrl = providers.gradleProperty("OPENSPOT_API_BASE_URL")
-    .orElse("https://api.openspot-jp.example/")
+    .orElse("https://openspot-jp-api.vault-cloudflare-backend.workers.dev/")
 val releaseStoreFile = providers.gradleProperty("OPENSPOT_KEYSTORE_FILE").orNull
 val releaseStorePassword = providers.gradleProperty("OPENSPOT_KEYSTORE_PASSWORD").orNull
 val releaseKeyAlias = providers.gradleProperty("OPENSPOT_KEY_ALIAS").orNull

@@ -23,6 +23,8 @@ Androidから利用するAPIはGradleプロパティで指定します。
 ./gradlew.bat assembleDebug -POPENSPOT_API_BASE_URL=https://your-worker.example/
 ```
 
+The production API is deployed at `https://openspot-jp-api.vault-cloudflare-backend.workers.dev/`.
+
 ## データに関する注意
 
 施設情報はオープンデータに依存するため、完全性・最新性を保証しません。利用前に現地表示や施設公式情報も確認してください。
