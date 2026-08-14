@@ -1,7 +1,12 @@
 package io.github.ninjin0802.openspotjp.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -51,6 +56,7 @@ import io.github.ninjin0802.openspotjp.data.model.Place
 import io.github.ninjin0802.openspotjp.data.model.PlaceCategory
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.annotations.MarkerOptions
@@ -100,7 +106,7 @@ fun OpenSpotApp(container: AppContainer) {
                     }) { Text("現在地") }
                     Button(onClick = vm::searchCurrentArea) { Text("このエリアを検索") }
                 }
-                MapPanel(state.center, state.places, vm::selectPlace)
+                MapPanel(state.center, state.userLocation, state.places, vm::selectPlace)
             }
 
             if (state.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -138,7 +144,7 @@ private fun ChipRows(state: OpenSpotUiState, vm: OpenSpotViewModel) {
 }
 
 @Composable
-private fun MapPanel(center: MapCenter, places: List<Place>, onSelect: (Place) -> Unit) {
+private fun MapPanel(center: MapCenter, userLocation: MapCenter?, places: List<Place>, onSelect: (Place) -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val mapView = remember { MapView(context) }
@@ -161,11 +167,15 @@ private fun MapPanel(center: MapCenter, places: List<Place>, onSelect: (Place) -
         onDispose { lifecycle.removeObserver(observer); mapView.onDestroy() }
     }
 
-    LaunchedEffect(map, center, places) {
+    LaunchedEffect(map, center, userLocation, places) {
         map?.let { ready ->
             ready.clear()
             places.forEach { place ->
                 ready.addMarker(MarkerOptions().position(LatLng(place.latitude, place.longitude)).title(place.name).snippet(place.category.label))
+            }
+            userLocation?.let { location ->
+                val icon = IconFactory.getInstance(context).fromBitmap(createUserLocationBitmap(context))
+                ready.addMarker(MarkerOptions().position(LatLng(location.latitude, location.longitude)).icon(icon))
             }
             ready.setOnMarkerClickListener { marker ->
                 places.firstOrNull { it.name == marker.title }?.let(onSelect)
@@ -175,6 +185,22 @@ private fun MapPanel(center: MapCenter, places: List<Place>, onSelect: (Place) -
         }
     }
     Box(Modifier.fillMaxWidth().height(320.dp).padding(vertical = 6.dp)) { AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize()) }
+}
+
+private fun createUserLocationBitmap(context: Context): Bitmap {
+    val density = context.resources.displayMetrics.density
+    val size = (40 * density).toInt()
+    val center = size / 2f
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    paint.color = Color.argb(55, 26, 115, 232)
+    canvas.drawCircle(center, center, 18 * density, paint)
+    paint.color = Color.WHITE
+    canvas.drawCircle(center, center, 10 * density, paint)
+    paint.color = Color.rgb(26, 115, 232)
+    canvas.drawCircle(center, center, 7 * density, paint)
+    return bitmap
 }
 
 @Composable

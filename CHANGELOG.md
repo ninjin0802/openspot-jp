@@ -21,3 +21,4 @@ All notable changes follow Semantic Versioning.
 - Broaden free Wi-Fi discovery, support common OSM opening-hours syntax, and retain both categories for Wi-Fi cafés.
 - Split multi-category Overpass searches into independently cached requests so one slow category cannot discard all results.
 - Return cafés without requiring opening-hours data; show hours when OpenStreetMap provides them.
+- Show the user's actual location as a Google Maps-style blue dot with a translucent accuracy halo.

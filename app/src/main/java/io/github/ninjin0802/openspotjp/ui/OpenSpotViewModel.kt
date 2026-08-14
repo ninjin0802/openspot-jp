@@ -16,6 +16,7 @@ data class MapCenter(val latitude: Double, val longitude: Double)
 
 data class OpenSpotUiState(
     val center: MapCenter = MapCenter(35.681236, 139.767125),
+    val userLocation: MapCenter? = null,
     val radiusMeters: Int = 2_000,
     val selectedCategories: Set<PlaceCategory> = PlaceCategory.entries.toSet(),
     val places: List<Place> = emptyList(),
@@ -48,7 +49,8 @@ class OpenSpotViewModel(private val container: AppContainer) : ViewModel() {
             _uiState.update { it.copy(loading = false, error = "現在地を取得できませんでした") }
             return@launch
         }
-        _uiState.update { it.copy(center = MapCenter(location.latitude, location.longitude)) }
+        val current = MapCenter(location.latitude, location.longitude)
+        _uiState.update { it.copy(center = current, userLocation = current) }
         searchAtCurrentCenter()
     }
 
