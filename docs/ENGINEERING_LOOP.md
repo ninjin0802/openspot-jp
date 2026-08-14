@@ -1,7 +1,17 @@
-# Qwen implementation loop
+# Role-based Codex engineering loop
 
-OpenSpot JP uses Ollama `qwen3.5:4b` as an external implementation worker. It is not a native Codex subagent and has no direct filesystem authority. Codex prepares a narrow task, Qwen generates code, Codex reviews and applies the accepted output, then tests it and returns exact failures for repair.
+OpenSpot JP uses Codex subagents for bounded work while the primary agent owns architecture, integration, deployment, and final verification.
 
-Task packets must include the goal, permitted files, existing interfaces, acceptance criteria, and prohibited behavior. Generated output must be machine-readable JSON or a unified diff. Temporary prompts and responses belong in `.qwen-work/` and are not committed.
+## Roles
 
-The loop stops only when relevant tests pass and review finds no critical or high-severity issue. After three malformed outputs for the same task, Codex records the limitation and performs the minimum integration repair needed to continue.
+- Architecture and difficult debugging: `gpt-5.6-sol` with high or xhigh reasoning.
+- Android implementation: `gpt-5.6-terra` with high reasoning.
+- Worker/API implementation: `gpt-5.6-terra` with high reasoning.
+- Routine tests and repository inspection: `gpt-5.6-luna` with medium reasoning.
+- Security, privacy, reliability, and final review: `gpt-5.6-sol` with high reasoning.
+
+The primary agent assigns explicit files and acceptance criteria. Independent tasks may run in parallel, but two agents must not edit the same file concurrently. Every result must include checks performed and unresolved risks. The primary agent reviews and integrates all changes.
+
+If the selected model is unavailable, use the nearest available Codex model and record the fallback. Local Qwen/Ollama models are not used.
+
+Never provide subagents with secrets, signing keys, precise user-location logs, background-location data, or unrelated private files.
